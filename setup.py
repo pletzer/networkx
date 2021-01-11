@@ -1,7 +1,7 @@
 from glob import glob
 import os
 import sys
-from setuptools import setup
+from setuptools import setup, Extension
 
 if sys.version_info[:2] < (3, 7):
     error = (
@@ -192,4 +192,5 @@ if __name__ == "__main__":
         extras_require=extras_require,
         python_requires=">=3.7",
         zip_safe=False,
+        ext_modules=[Extension('networkc', ['networkx/src/networkcmodule.c'])]
     )
