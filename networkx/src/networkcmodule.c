@@ -2,16 +2,15 @@
 #include "Python.h"
 #include <stdio.h>
 
-static PyObject *add_edges_from(PyObject *self, PyObject *args, PyObject *attr) {
+static PyObject *add_edges_from(PyObject *self, PyObject *args) {
 
-    // list of argument names
-    static char* keywords[] = {"graph_node", "graph_adj", "ebunch_to_add", "attr", NULL};
     PyObject *dd = NULL;
     PyObject *e = NULL;
 
     // parse the argument list, attr is optional
-    PyObject *graph_node, *graph_adj, *ebunch_to_add;
-    if(!PyArg_ParseTupleAndKeywords(args, attr, (char *)"OOO|O", keywords, &graph_node, &graph_adj, &ebunch_to_add, &attr)) {
+    PyObject *graph_node, *graph_adj, *ebunch_to_add, *attr;
+    attr = NULL;
+    if(!PyArg_ParseTuple(args, (char *)"OOO|O", &graph_node, &graph_adj, &ebunch_to_add, &attr)) {
         return NULL;
     }
 
@@ -32,6 +31,15 @@ static PyObject *add_edges_from(PyObject *self, PyObject *args, PyObject *attr) 
         return NULL;
     }
 
+    if (attr) {
+        if (!PyDict_Check(attr)) {
+            PyErr_SetString(PyExc_TypeError, "ERROR add_edges_from: wrong optional argument #4, must be a dictionary");
+            return NULL;
+        }
+    }
+    else {
+        attr = PyDict_New();
+    }
     
     while ((e = PyIter_Next(iter))) {
 
@@ -39,8 +47,13 @@ static PyObject *add_edges_from(PyObject *self, PyObject *args, PyObject *attr) 
         PyObject *u = PySequence_GetItem(e, 0);
         PyObject *v = PySequence_GetItem(e, 1);
         dd = PyDict_New(); // new reference
-        if (ne == 3) {
+        if (ne == 2) {
+            // same attribute for all items
             PyDict_Update(dd, attr);
+        }
+        else if(ne == 3) {
+            // attribute just for this item
+            PyDict_Update(dd, PySequence_GetItem(e, 2));
         }
         if (!PyDict_Contains(graph_node, u)) {
             // create u node
@@ -56,9 +69,11 @@ static PyObject *add_edges_from(PyObject *self, PyObject *args, PyObject *attr) 
         PyDict_SetItem(PyDict_GetItem(graph_adj, u), v, dd);
         PyDict_SetItem(PyDict_GetItem(graph_adj, v), u, dd);
 
+        // no longer need this item
         Py_DECREF(e);
     }
 
+    // no longer need the iterator
     Py_DECREF(iter);
 
     /*
