@@ -2,14 +2,15 @@
 #include "Python.h"
 #include <stdio.h>
 
-static PyObject *add_edges_from(PyObject *self, PyObject *args) {
+static PyObject *add_edges_from(PyObject *self, PyObject *args, PyObject *attr) {
 
+    // list of argument names
+    static char* keywords[] = {"graph_node", "graph_adj", "ebunch_to_add", "attr", NULL};
     PyObject *dd = NULL;
 
-    printf("in add_edges_from\n"); // DEBUG
-
+    // parse the argument list, attr is optional
     PyObject *graph_node, *graph_adj, *ebunch_to_add;
-    if(!PyArg_ParseTuple(args, (char *)"OOO", &graph_node, &graph_adj, &ebunch_to_add)) {
+    if(!PyArg_ParseTupleAndKeywords(args, attr, (char *)"OOO|O", keywords, &graph_node, &graph_adj, &ebunch_to_add, &attr)) {
         return NULL;
     }
 
@@ -35,22 +36,25 @@ static PyObject *add_edges_from(PyObject *self, PyObject *args) {
         PyObject *e = PySequence_GetItem(ebunch_to_add, i); // new reference
         Py_ssize_t ne = PySequence_Length(e);
         printf("i = %ld ne = %ld\n", i, ne);
-        if (ne == 2) {
-            dd = PyDict_New(); // new reference
-            PyObject *u = PySequence_GetItem(e, 0);
-            PyObject *v = PySequence_GetItem(e, 1);
-            if (!PyDict_Contains(graph_node, u)) {
-                PyDict_SetItem(graph_adj, u, PyDict_New());
-                PyDict_SetItem(graph_node, u, PyDict_New());
-            }
-            if (!PyDict_Contains(graph_node, v)) {
-                PyDict_SetItem(graph_adj, v, PyDict_New());
-                PyDict_SetItem(graph_node, v, PyDict_New());
-            }
-            PyDict_SetItem(PyDict_GetItem(graph_adj, u), v, dd);
-            PyDict_SetItem(PyDict_GetItem(graph_adj, v), u, dd);
+        PyObject *u = PySequence_GetItem(e, 0);
+        PyObject *v = PySequence_GetItem(e, 1);
+        dd = PyDict_New(); // new reference
+        if (ne == 3) {
+            PyDict_Update(dd, attr);
         }
-
+        if (!PyDict_Contains(graph_node, u)) {
+            // create u node
+            PyDict_SetItem(graph_adj, u, PyDict_New());
+            PyDict_SetItem(graph_node, u, PyDict_New());
+        }
+        if (!PyDict_Contains(graph_node, v)) {
+            // create v node
+            PyDict_SetItem(graph_adj, v, PyDict_New());
+            PyDict_SetItem(graph_node, v, PyDict_New());
+        }
+        // update the attributes
+        PyDict_SetItem(PyDict_GetItem(graph_adj, u), v, dd);
+        PyDict_SetItem(PyDict_GetItem(graph_adj, v), u, dd);
     }
 
     /*
@@ -77,13 +81,11 @@ static PyObject *add_edges_from(PyObject *self, PyObject *args) {
     */
  
 
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    Py_RETURN_NONE;
 }
 
 static PyMethodDef networkc_methods[] = {
-    {"add_edges_from", add_edges_from, METH_VARARGS, "Add egdes from a list"},
+    {"add_edges_from", (PyCFunction) add_edges_from, METH_VARARGS | METH_KEYWORDS, "Add egdes from a list"},
     {NULL, NULL, 0, NULL}
 };
 
