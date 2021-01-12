@@ -7,6 +7,7 @@ static PyObject *add_edges_from(PyObject *self, PyObject *args, PyObject *attr) 
     // list of argument names
     static char* keywords[] = {"graph_node", "graph_adj", "ebunch_to_add", "attr", NULL};
     PyObject *dd = NULL;
+    PyObject *e = NULL;
 
     // parse the argument list, attr is optional
     PyObject *graph_node, *graph_adj, *ebunch_to_add;
@@ -24,18 +25,16 @@ static PyObject *add_edges_from(PyObject *self, PyObject *args, PyObject *attr) 
         return NULL;
     }
 
-    if(!PySequence_Check(ebunch_to_add)) {
-        PyErr_SetString(PyExc_TypeError, "ERROR add_edges_from: wrong argument #3, [(s,t[,a]), ...] required");
-        return NULL;
-    }
+    // if(!PyIter_Check(ebunch_to_add)) {
+    //     PyErr_SetString(PyExc_TypeError, "ERROR add_edges_from: wrong argument #3, [(s,t[,a]), ...] required");
+    //     return NULL;
+    // }
 
-    Py_ssize_t n = PySequence_Length(ebunch_to_add);
-    printf("n = %ld\n", n);
+    PyObject *iter = PyObject_GetIter(ebunch_to_add);
+    
+    while ((e = PyIter_Next(iter))) {
 
-    for (Py_ssize_t i = 0; i < n; ++i) {
-        PyObject *e = PySequence_GetItem(ebunch_to_add, i); // new reference
         Py_ssize_t ne = PySequence_Length(e);
-        printf("i = %ld ne = %ld\n", i, ne);
         PyObject *u = PySequence_GetItem(e, 0);
         PyObject *v = PySequence_GetItem(e, 1);
         dd = PyDict_New(); // new reference
@@ -55,7 +54,38 @@ static PyObject *add_edges_from(PyObject *self, PyObject *args, PyObject *attr) 
         // update the attributes
         PyDict_SetItem(PyDict_GetItem(graph_adj, u), v, dd);
         PyDict_SetItem(PyDict_GetItem(graph_adj, v), u, dd);
+
+        Py_DECREF(e);
     }
+
+    Py_DECREF(iter);
+
+    // Py_ssize_t n = PySequence_Length(ebunch_to_add);
+
+    // for (Py_ssize_t i = 0; i < n; ++i) {
+    //     PyObject *e = PySequence_GetItem(ebunch_to_add, i); // new reference
+    //     Py_ssize_t ne = PySequence_Length(e);
+    //     printf("i = %ld ne = %ld\n", i, ne);
+    //     PyObject *u = PySequence_GetItem(e, 0);
+    //     PyObject *v = PySequence_GetItem(e, 1);
+    //     dd = PyDict_New(); // new reference
+    //     if (ne == 3) {
+    //         PyDict_Update(dd, attr);
+    //     }
+    //     if (!PyDict_Contains(graph_node, u)) {
+    //         // create u node
+    //         PyDict_SetItem(graph_adj, u, PyDict_New());
+    //         PyDict_SetItem(graph_node, u, PyDict_New());
+    //     }
+    //     if (!PyDict_Contains(graph_node, v)) {
+    //         // create v node
+    //         PyDict_SetItem(graph_adj, v, PyDict_New());
+    //         PyDict_SetItem(graph_node, v, PyDict_New());
+    //     }
+    //     // update the attributes
+    //     PyDict_SetItem(PyDict_GetItem(graph_adj, u), v, dd);
+    //     PyDict_SetItem(PyDict_GetItem(graph_adj, v), u, dd);
+    // }
 
     /*
  925         for e in ebunch_to_add:
